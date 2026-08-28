@@ -12,7 +12,6 @@ from colorama import init, Fore, Style
 
 init(autoreset=True)
 
-# ----------------- إعدادات الوورد ----------------- #
 def set_bilingual_font(run, eng_font='Times New Roman', ar_font='Arial'):
     run.font.name = eng_font
     r = run._r
@@ -54,7 +53,6 @@ def add_page_number(doc):
         run._r.append(instrText)
         run._r.append(fldChar2)
 
-# ----------------- معالجة المستند ----------------- #
 def process_document(input_file, output_file, features):
     doc = docx.Document(input_file)
     point_counter = 1
@@ -63,32 +61,27 @@ def process_document(input_file, output_file, features):
         text = p.text.strip()
         if not text: continue
 
-        # 5. ترقيم النقاط
         if features['5'] and (text.startswith('-') or text.startswith('*')):
             p.text = f"{point_counter}- " + text[1:].strip()
             point_counter += 1
             
-        # 1. تضليل ملاحظات
         if features['1'] and "ملاحظة" in text:
             p.text = "💡 " + p.text if not p.text.startswith("💡") else p.text
             for run in p.runs:
                 run.font.bold = True
                 run.font.highlight_color = WD_COLOR_INDEX.YELLOW
                 
-        # 2. تمييز العناوين
         elif features['2'] and ("مهم" in text or "قاعدة" in text or p.style.name.startswith('Heading')):
             color = "CC0000" if "مهم" in text else "003366"
             add_paragraph_border(p, color=color)
             for run in p.runs:
                 run.font.bold = True
 
-        # 3. و 6. تخصيص الخطوط وتلوين الإنجليزي
         for run in p.runs:
             if features['3']:
                 set_bilingual_font(run)
             
             if features['6'] and re.search(r'[A-Za-z]', run.text):
-                # تلوين الكلمات الإنجليزية باللون الأزرق
                 run.font.color.rgb = RGBColor(0, 0, 255)
 
     if features['4']:
@@ -96,41 +89,39 @@ def process_document(input_file, output_file, features):
 
     doc.save(output_file)
 
-# ----------------- الواجهة التفاعلية ----------------- #
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
 def display_banner():
     print(Fore.CYAN + "="*55)
-    print(Fore.CYAN + "         مــكــتــبــة الــمــصــطــفــى")
+    print(Fore.CYAN + "          AL-MUSTAFA LIBRARY - TOOL")
     print(Fore.CYAN + "="*55)
 
 def main():
     root = tk.Tk()
     root.withdraw()
 
-    # الميزات: افتراضياً غير مفعلة
     features = {
-        '1': {'name': 'تضليل الملاحظات', 'active': False},
-        '2': {'name': 'تمييز العناوين', 'active': False},
-        '3': {'name': 'الخط (عربي: Arial, إنجليزي: Times New Roman)', 'active': False},
-        '4': {'name': 'ترقيم الصفحات', 'active': False},
-        '5': {'name': 'ترقيم النقاط التلقائي', 'active': False},
-        '6': {'name': 'تلوين الكلمات الإنجليزية', 'active': False}
+        '1': {'name': 'Highlight Notes', 'active': False},
+        '2': {'name': 'Highlight Headings & Borders', 'active': False},
+        '3': {'name': 'Set Fonts (AR: Arial, EN: Times New Roman)', 'active': False},
+        '4': {'name': 'Add Page Numbers', 'active': False},
+        '5': {'name': 'Auto Number Points', 'active': False},
+        '6': {'name': 'Color English Text (Blue)', 'active': False}
     }
 
     while True:
         clear_screen()
         display_banner()
-        print("\nقم بإدخال رقم الميزة لتفعيلها/إلغائها، أو اضغط 0 لاختيار الملف والبدء:\n")
+        print("\nEnter feature number to toggle, or press 0 to choose file & start:\n")
         
         for key, value in features.items():
             color = Fore.GREEN if value['active'] else Fore.RED
-            status = "[مفعل]" if value['active'] else "[معطل]"
+            status = "[ACTIVE]" if value['active'] else "[DISABLED]"
             print(f"{color}{key}. {value['name']} - {status}")
             
-        print(Fore.WHITE + "\n0. بدء المعالجة (اختيار الملف)")
-        print(Fore.WHITE + "Q. خروج")
+        print(Fore.WHITE + "\n0. Start Processing (Select Word File)")
+        print(Fore.WHITE + "Q. Exit")
         
         choice = input("\n> ")
         
@@ -141,31 +132,31 @@ def main():
         elif choice in features:
             features[choice]['active'] = not features[choice]['active']
 
-    print(Fore.YELLOW + "\nيرجى اختيار ملف الوورد من النافذة المنبثقة...")
+    print(Fore.YELLOW + "\nPlease select the Word file from the popup window...")
     input_file = filedialog.askopenfilename(
-        title="اختر ملف الوورد الأصلي",
+        title="Select Original Word File",
         filetypes=[("Word Documents", "*.docx")]
     )
     
     if not input_file:
-        print(Fore.RED + "لم يتم اختيار أي ملف. تم الإلغاء.")
+        print(Fore.RED + "No file selected. Operation cancelled.")
         return
 
     file_dir, file_name = os.path.split(input_file)
     name_only, extension = os.path.splitext(file_name)
-    output_file = os.path.join(file_dir, f"{name_only}_معدل{extension}")
+    output_file = os.path.join(file_dir, f"{name_only}_Modified{extension}")
     
-    print(Fore.CYAN + "\nجاري التعديل...")
+    print(Fore.CYAN + "\nProcessing document...")
     
     active_flags = {k: v['active'] for k, v in features.items()}
     try:
         process_document(input_file, output_file, active_flags)
-        print(Fore.GREEN + "\nتم الانتهاء بنجاح!")
-        print(Fore.GREEN + f"مسار الملف الجديد:\n{output_file}")
+        print(Fore.GREEN + "\nDone successfully!")
+        print(Fore.GREEN + f"Saved at:\n{output_file}")
     except Exception as e:
-        print(Fore.RED + f"\nحدث خطأ: {e}")
+        print(Fore.RED + f"\nError: {e}")
         
-    input("\nاضغط Enter للخروج...")
+    input("\nPress Enter to exit...")
 
 if __name__ == "__main__":
     main()
